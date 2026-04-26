@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Orario">
+<title>Timelog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link media="print" onload="this.media='all'" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Sora:wght@300;400;600;700&display=swap">
+<style>
+:root {
+  --bg: #0d0d18; --surface: #14142a; --surface2: #1c1c38; --border: #2a2a50;
+  --accent: #6c63ff; --green: #43e97b; --red: #ff6584; --yellow: #ffd166;
+  --text: #e8e8f0; --text2: #8888b0;
+  --mono: 'DM Mono', ui-monospace, 'Cascadia Code', 'Fira Mono', monospace; --sans: 'Sora', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --radius: 14px; --radius-sm: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overflow-x: hidden; }
+::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+#app { display: flex; flex-direction: column; min-height: 100vh; max-width: 480px; margin: 0 auto; }
+
+.header { padding: 20px 20px 0; display: flex; align-items: center; justify-content: space-between; }
+.logo { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text2); font-family: var(--mono); }
+.logo span { color: var(--accent); }
+
+.nav { display: flex; gap: 4px; padding: 16px 20px 0; }
+.nav-btn { flex: 1; padding: 8px 4px; border: none; border-radius: var(--radius-sm); background: transparent; color: var(--text2); font-family: var(--sans); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+.nav-btn.active { background: var(--surface2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+.nav-btn:hover:not(.active) { color: var(--text); }
+
+.page { display: none; flex-direction: column; flex: 1; padding: 16px 20px 100px; gap: 14px; }
+.page.active { display: flex; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.card-title { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text2); margin-bottom: 14px; font-family: var(--mono); }
+
+/* DATE */
+.date-display-row { display: flex; justify-content: center; }
+#dateDisplay {
+  flex: 1; text-align: center; font-family: var(--mono); font-size: 18px; font-weight: 500; color: var(--text);
+  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 14px 10px; cursor: pointer; transition: border-color 0.15s; user-select: none; letter-spacing: 0.03em;
+}
+#dateDisplay:hover { border-color: var(--accent); }
+#dateInput { position: fixed; opacity: 0; pointer-events: none; top: -100px; left: 0; width: 1px; height: 1px; }
+.date-nav-row { display: flex; gap: 8px; margin-top: 10px; }
+.date-nav {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); height: 52px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 28px; font-weight: 300; transition: all 0.15s;
+  font-family: var(--mono); line-height: 1; user-select: none;
+}
+.date-nav:hover { border-color: var(--accent); color: var(--accent); background: rgba(108,99,255,0.12); }
+.date-nav:active { transform: scale(0.95); background: rgba(108,99,255,0.2); }
+
+/* DAY BADGE */
+.day-badge-wrap { display: flex; justify-content: center; margin-top: 10px; }
+.day-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 20px;
+  padding: 5px 16px; font-size: 11px; color: var(--text2); font-family: var(--mono);
+}
+.day-badge.is-weekend { border-color: rgba(255,209,102,0.4); color: var(--yellow); background: rgba(255,209,102,0.07); }
+.day-badge.is-festivo { border-color: rgba(255,101,132,0.4); color: var(--red); background: rgba(255,101,132,0.07); }
+.day-badge.is-today { border-color: rgba(108,99,255,0.4); color: var(--accent); background: rgba(108,99,255,0.1); }
+
+/* TIME INPUTS */
+.time-stack { display: flex; flex-direction: column; gap: 10px; }
+.time-row { display: flex; align-items: center; gap: 12px; }
+.time-row-label {
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2);
+  font-family: var(--mono); width: 58px; flex-shrink: 0; text-align: right;
+}
+.time-input {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); font-family: var(--mono); font-size: 26px; padding: 14px 16px;
+  outline: none; transition: border-color 0.15s; text-align: center; font-weight: 400;
+}
+.time-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108,99,255,0.15); }
+.time-input.ingresso:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(67,233,123,0.12); }
+.time-input.uscita:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(255,101,132,0.12); }
+.time-divider { display: flex; align-items: center; gap: 12px; padding: 2px 0; }
+.time-divider-line { flex: 1; height: 1px; background: var(--border); margin-left: 70px; }
+.time-divider-arrow { color: var(--text2); font-size: 14px; font-family: var(--mono); margin-left: 70px; }
+.ore-rimaste-box { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text2); font-family: var(--mono); padding: 10px 0 0; border-top: 1px solid var(--border); margin-top: 10px; }
+.ore-rimaste-val { font-weight: 500; color: var(--text); }
+
+/* STEPPER */
+.stepper { display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.stepper-btn { background: transparent; border: none; color: var(--text2); width: 34px; height: 36px; cursor: pointer; font-size: 18px; transition: all 0.15s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.stepper-btn:hover { color: var(--accent); background: rgba(108,99,255,0.1); }
+.stepper-val { flex: 1; min-width: 54px; text-align: center; font-family: var(--mono); font-size: 13px; color: var(--text); border-left: 1px solid var(--border); border-right: 1px solid var(--border); padding: 8px 4px; }
+
+/* PAUSE ROW */
+.pause-row { display: flex; align-items: center; gap: 10px; }
+.pause-label { flex: 1; font-size: 13px; color: var(--text); }
+.pause-sublabel { font-size: 11px; color: var(--text2); display: block; }
+
+/* TIPO TAG */
+.tag-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag { padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text2); transition: all 0.15s; font-family: var(--mono); }
+.tag.active-ferie { background: rgba(108,99,255,0.15); border-color: var(--accent); color: var(--accent); }
+.tag.active-malattia { background: rgba(255,101,132,0.15); border-color: var(--red); color: var(--red); }
+.tag.active-permesso { background: rgba(255,209,102,0.15); border-color: var(--yellow); color: var(--yellow); }
+
+/* ASSENZA ORE */
+.assenza-ore-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); display: none; }
+.assenza-ore-section.visible { display: block; }
+.assenza-toggle { display: inline-flex; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-top: 8px; }
+.assenza-toggle-btn { padding: 7px 14px; font-size: 11px; font-family: var(--mono); border: none; background: transparent; color: var(--text2); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.assenza-toggle-btn.active { background: var(--surface); color: var(--text); border-right: 1px solid var(--border); }
+.assenza-toggle-btn:last-child.active { border-right: none; border-left: 1px solid var(--border); }
+.assenza-parziale-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+
+/* NOTE */
+.note-input { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: var(--sans); font-size: 13px; padding: 10px 12px; width: 100%; outline: none; resize: none; height: 60px; transition: border-color 0.15s; }
+.note-input:focus { border-color: var(--accent); }
+.note-input::placeholder { color: var(--border); }
+
+/* RESULT */
+.result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; text-align: center; position: relative; overflow: hidden; }
+.result-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; opacity: 0; transition: opacity 0.3s; }
+.result-card.positive::before { background: var(--green); opacity: 1; }
+.result-card.negative::before { background: var(--red); opacity: 1; }
+.result-card.neutral::before { background: var(--yellow); opacity: 1; }
+.result-label { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text2); font-family: var(--mono); margin-bottom: 8px; }
+.result-time { font-family: var(--mono); font-size: 42px; font-weight: 500; line-height: 1; color: var(--text2); }
+.result-time.positive { color: var(--green); }
+.result-time.negative { color: var(--red); }
+.result-time.neutral { color: var(--yellow); }
+.result-sub { font-size: 12px; color: var(--text2); margin-top: 8px; font-family: var(--mono); }
+
+.save-btn { background: var(--accent); border: none; border-radius: var(--radius); color: white; font-family: var(--sans); font-size: 14px; font-weight: 600; padding: 16px; width: 100%; cursor: pointer; transition: all 0.2s; }
+.save-btn:hover { background: #7c74ff; transform: translateY(-1px); }
+.save-btn:active { transform: translateY(0); }
+.save-btn.saved { background: var(--green); color: var(--bg); }
+
+/* ARCHIVIO */
+.month-section { margin-bottom: 4px; }
+.month-header { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text2); font-family: var(--mono); padding: 8px 0 6px; display: flex; justify-content: space-between; align-items: center; }
+.month-summary { font-size: 11px; font-family: var(--mono); }
+.month-summary.pos { color: var(--green); } .month-summary.neg { color: var(--red); }
+.day-row { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 4px; cursor: pointer; transition: all 0.15s; }
+.day-row:hover { border-color: var(--accent); }
+.day-row.is-festivo { opacity: 0.5; }
+.day-row.is-ferie { border-left: 3px solid var(--accent); }
+.day-row.is-malattia { border-left: 3px solid var(--red); }
+.day-row.is-permesso { border-left: 3px solid var(--yellow); }
+.day-row-date { font-family: var(--mono); font-size: 13px; color: var(--text2); min-width: 60px; }
+.day-row-name { font-size: 12px; color: var(--text2); min-width: 36px; }
+.day-row-hours { font-family: var(--mono); font-size: 12px; color: var(--text); flex: 1; text-align: center; }
+.day-row-diff { font-family: var(--mono); font-size: 12px; font-weight: 500; min-width: 50px; text-align: right; }
+.day-row-diff.pos { color: var(--green); } .day-row-diff.neg { color: var(--red); }
+.day-row-tag { font-size: 9px; padding: 2px 6px; border-radius: 8px; font-family: var(--mono); font-weight: 600; flex-shrink: 0; }
+.tag-f { background: rgba(108,99,255,0.2); color: var(--accent); }
+.tag-m { background: rgba(255,101,132,0.2); color: var(--red); }
+.tag-p { background: rgba(255,209,102,0.2); color: var(--yellow); }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text2); font-size: 13px; line-height: 1.6; }
+.empty-icon { font-size: 32px; margin-bottom: 10px; }
+
+/* FESTIVITÀ */
+.festivity-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 4px; padding: 10px 14px; transition: border-color 0.15s; }
+.festivity-item.editing { border-color: var(--accent); padding: 14px; }
+.festivity-main { display: flex; align-items: center; gap: 10px; }
+.festivity-date { font-family: var(--mono); font-size: 13px; color: var(--accent); min-width: 80px; }
+.festivity-name { font-size: 13px; flex: 1; }
+.festivity-actions { display: flex; gap: 2px; }
+.festivity-btn { background: transparent; border: none; color: var(--text2); cursor: pointer; font-size: 14px; padding: 4px 8px; border-radius: 4px; transition: all 0.15s; }
+.festivity-btn:hover { color: var(--accent); background: rgba(108,99,255,0.1); }
+.festivity-btn.del:hover { color: var(--red); background: rgba(255,101,132,0.1); }
+.festivity-edit-form { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.festivity-edit-form input { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: var(--mono); font-size: 12px; padding: 7px 10px; outline: none; transition: border-color 0.15s; }
+.festivity-edit-form input:focus { border-color: var(--accent); }
+.festivity-edit-form input[type="date"] { flex: 1; min-width: 120px; }
+.festivity-edit-form input[type="text"] { flex: 2; min-width: 130px; }
+.festivity-edit-actions { display: flex; gap: 6px; margin-top: 8px; }
+.festivity-save-btn { background: var(--accent); border: none; border-radius: var(--radius-sm); color: white; font-size: 12px; padding: 7px 16px; cursor: pointer; font-family: var(--sans); font-weight: 600; }
+.festivity-cancel-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text2); font-size: 12px; padding: 7px 12px; cursor: pointer; font-family: var(--sans); }
+
+.add-festivity-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.add-festivity-form input { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: var(--mono); font-size: 13px; padding: 9px 12px; outline: none; transition: border-color 0.15s; }
+.add-festivity-form input:focus { border-color: var(--accent); }
+.add-festivity-form input[type="date"] { flex: 1; min-width: 130px; }
+.add-festivity-form input[type="text"] { flex: 2; min-width: 140px; }
+.add-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: var(--sans); font-size: 13px; padding: 9px 16px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* EXPORT */
+.export-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: var(--sans); font-size: 14px; font-weight: 500; padding: 16px; width: 100%; cursor: pointer; transition: all 0.2s; }
+.export-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* SETTINGS */
+.setting-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.setting-row:last-child { border-bottom: none; }
+.setting-label { flex: 1; font-size: 13px; }
+.setting-sub { font-size: 11px; color: var(--text2); }
+.small-input { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: var(--mono); font-size: 14px; padding: 7px 10px; width: 80px; outline: none; text-align: center; transition: border-color 0.15s; }
+.small-input:focus { border-color: var(--accent); }
+.ore-dovute-note { font-size: 11px; color: var(--text2); font-family: var(--mono); line-height: 1.7; }
+.import-file-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); font-family: var(--sans); font-size: 13px; padding: 9px 14px;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+}
+.import-file-label:hover { border-color: var(--accent); color: var(--accent); }
+
+/* TOAST */
+#toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 8px 18px; font-size: 13px; font-family: var(--mono); color: var(--text); opacity: 0; pointer-events: none; transition: all 0.3s; white-space: nowrap; z-index: 1000; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.success { border-color: var(--green); color: var(--green); }
+#toast.error { border-color: var(--red); color: var(--red); }
+
+/* BOTTOM BAR */
+.bottom-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; display: flex; background: rgba(13,13,24,0.95); border-top: 1px solid var(--border); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); z-index: 100; }
+.bottom-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 0 14px; cursor: pointer; color: var(--text2); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; font-family: var(--mono); transition: color 0.15s; border: none; background: transparent; }
+.bottom-item.active { color: var(--accent); }
+.bottom-item:hover { color: var(--text); }
+.bottom-icon { font-size: 20px; line-height: 1; }
+
+/* INSTALL */
+#installBanner { background: linear-gradient(135deg,rgba(108,99,255,0.15),rgba(255,101,132,0.1)); border: 1px solid rgba(108,99,255,0.3); border-radius: var(--radius); padding: 14px 16px; display: flex; align-items: center; gap: 12px; margin: 0 20px; }
+#installBanner.hidden { display: none; }
+.install-text { flex: 1; font-size: 12px; color: var(--text); line-height: 1.4; }
+.install-text strong { color: var(--accent); }
+.install-btn { background: var(--accent); border: none; border-radius: var(--radius-sm); color: white; font-size: 11px; font-weight: 600; padding: 7px 12px; cursor: pointer; font-family: var(--sans); }
+.install-close { background: transparent; border: none; color: var(--text2); cursor: pointer; font-size: 16px; }
+
+/* FILTER */
+.filter-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-chip { padding: 4px 12px; border-radius: 14px; font-size: 11px; font-family: var(--mono); border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+.filter-chip.active { background: var(--surface2); border-color: var(--accent); color: var(--accent); }
+
+.section-sep { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text2); font-family: var(--mono); padding: 4px 0 8px; }
+
+/* MONTH CALENDAR OVERLAY */
+#calOverlay {
+  display: none; position: fixed; inset: 0; z-index: 500;
+  background: rgba(5,5,15,0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  align-items: flex-end; justify-content: center;
+}
+#calOverlay.open { display: flex; }
+#calPanel {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px 20px 0 0;
+  padding: 0 0 24px; width: 100%; max-width: 480px;
+  animation: slideUp 0.28s cubic-bezier(.32,1.2,.5,1);
+}
+@keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.cal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid var(--border); }
+.cal-month-title { font-family: var(--mono); font-size: 14px; font-weight: 500; }
+.cal-nav { display: flex; gap: 6px; align-items: center; }
+.cal-nav-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; font-family: var(--mono); transition: all 0.15s; }
+.cal-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cal-close { background: transparent; border: none; color: var(--text2); font-size: 20px; cursor: pointer; padding: 4px 8px; transition: color 0.15s; line-height: 1; }
+.cal-close:hover { color: var(--text); }
+.cal-weekdays { display: grid; grid-template-columns: repeat(7,1fr); padding: 10px 12px 4px; }
+.cal-weekday { text-align: center; font-family: var(--mono); font-size: 10px; color: var(--text2); padding: 4px 0; }
+.cal-weekday.weekend { color: var(--yellow); opacity: 0.7; }
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); padding: 0 12px; gap: 3px; }
+.cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-family: var(--mono); font-size: 13px; cursor: pointer; transition: all 0.12s; position: relative; border: 1px solid transparent; }
+.cal-day:hover:not(.empty) { background: var(--surface2); border-color: var(--border); }
+.cal-day.today { border-color: rgba(108,99,255,0.6); color: var(--accent); }
+.cal-day.selected { background: var(--accent); color: white; border-color: var(--accent); }
+.cal-day.weekend { color: var(--yellow); }
+.cal-day.festivo { color: var(--red); }
+.cal-day.empty { cursor: default; pointer-events: none; }
+.cal-day.has-data::after { content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--green); }
+.cal-day.neg-data::after { background: var(--red); }
+.cal-day.selected::after { background: rgba(255,255,255,0.7); }
+.cal-today-btn { display: block; margin: 14px auto 0; background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text2); font-family: var(--mono); font-size: 11px; padding: 7px 24px; cursor: pointer; transition: all 0.15s; }
+.cal-today-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+@media (max-width: 380px) { .result-time { font-size: 34px; } .time-input { font-size: 18px; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="logo"><span>◉</span> REGISTRO ORE</div>
+    <div style="font-size:11px;color:var(--text2);font-family:var(--mono);" id="yearLabel">2026</div>
+  </div>
+
+  <div id="installBanner" class="hidden" style="margin-top:12px;">
+    <div class="install-text"><strong>Installa l'app</strong><br>Aggiungila alla schermata home per usarla offline.</div>
+    <button class="install-btn" id="installBtn">Installa</button>
+    <button class="install-close" id="installClose">✕</button>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-btn active" data-page="oggi">Oggi</button>
+    <button class="nav-btn" data-page="archivio">Archivio</button>
+    <button class="nav-btn" data-page="festività">Festività</button>
+    <button class="nav-btn" data-page="impostazioni">Settings</button>
+  </nav>
+
+  <!-- PAGE: OGGI -->
+  <div class="page active" id="page-oggi">
+
+    <div class="card">
+      <div class="card-title">Data</div>
+      <div class="date-display-row">
+        <div id="dateDisplay">25 apr 2026</div>
+        <input type="date" id="dateInput" tabindex="-1">
+      </div>
+      <div class="date-nav-row">
+        <button class="date-nav" id="prevDay" type="button">&#8249;</button>
+        <button class="date-nav" id="nextDay" type="button">&#8250;</button>
+      </div>
+      <div class="day-badge-wrap">
+        <div class="day-badge is-today" id="dayBadge">Sabato — Oggi</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Orario di lavoro</div>
+      <div class="time-stack">
+        <div class="time-row">
+          <div class="time-row-label">Ingresso</div>
+          <input class="time-input ingresso" type="time" id="ingressoInput">
+        </div>
+        <div class="time-divider-arrow">↓</div>
+        <div class="time-row">
+          <div class="time-row-label">Uscita</div>
+          <input class="time-input uscita" type="time" id="uscitaInput">
+        </div>
+      </div>
+      <div class="ore-rimaste-box">
+        <span>Uscita prevista per 8h:</span>
+        <span class="ore-rimaste-val" id="uscitaPrevista">—</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Parametri</div>
+
+      <div class="pause-row">
+        <div class="pause-label">Pausa pranzo<span class="pause-sublabel">Durata pausa</span></div>
+        <div class="stepper">
+          <button class="stepper-btn" id="pausaMinus" type="button">−</button>
+          <div class="stepper-val" id="pausaVal">60 min</div>
+          <button class="stepper-btn" id="pausaPlus" type="button">+</button>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <div class="card-title" style="margin-bottom:8px;">Tipo giornata</div>
+        <div class="tag-row">
+          <button class="tag" data-tipo="normale" id="tag-normale" type="button">Normale</button>
+          <button class="tag" data-tipo="ferie" id="tag-ferie" type="button">🏖 Ferie</button>
+          <button class="tag" data-tipo="malattia" id="tag-malattia" type="button">🤒 Malattia</button>
+          <button class="tag" data-tipo="permesso" id="tag-permesso" type="button">⏱ Permesso</button>
+        </div>
+      </div>
+
+      <!-- Sezione ore assenza — visibile solo se tipo != normale -->
+      <div class="assenza-ore-section" id="assenzaOreSection">
+        <div class="card-title" style="margin-bottom:0;" id="assenzaOreTitle">Durata ferie</div>
+        <div class="assenza-toggle">
+          <button class="assenza-toggle-btn active" id="assenzaTuttaGiornataBtn" type="button">Tutta la giornata</button>
+          <button class="assenza-toggle-btn" id="assenzaParzialeBtn" type="button">Ore specifiche</button>
+        </div>
+        <div id="assenzaParzialeRow" style="display:none; margin-top:10px;">
+          <div style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-bottom:6px;">Seleziona ore di assenza (step 30 min — default: mezza giornata)</div>
+          <div class="stepper">
+            <button class="stepper-btn" id="assenzaMinus" type="button">−</button>
+            <div class="stepper-val" id="assenzaVal" style="flex:1;">4h 00m</div>
+            <button class="stepper-btn" id="assenzaPlus" type="button">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <div class="card-title" style="margin-bottom:6px;">Note</div>
+        <textarea class="note-input" id="noteInput" placeholder="Annotazioni opzionali..."></textarea>
+      </div>
+    </div>
+
+    <div class="result-card" id="resultCard">
+      <div class="result-label">Eccedenza / Deficit</div>
+      <div class="result-time" id="resultTime">—</div>
+      <div class="result-sub" id="resultSub">Inserisci orari per calcolare</div>
+    </div>
+
+    <button class="save-btn" id="saveBtn" type="button">Salva giornata</button>
+  </div>
+
+  <!-- PAGE: ARCHIVIO -->
+  <div class="page" id="page-archivio">
+    <div class="filter-bar">
+      <button class="filter-chip active" data-filter="all" type="button">Tutti</button>
+      <button class="filter-chip" data-filter="ferie" type="button">Ferie</button>
+      <button class="filter-chip" data-filter="malattia" type="button">Malattia</button>
+      <button class="filter-chip" data-filter="permesso" type="button">Permesso</button>
+      <button class="filter-chip" data-filter="straordinario" type="button">Straordinario</button>
+    </div>
+    <div id="archivioList"></div>
+    <button class="export-btn" id="exportXlsx" type="button"><span>📊</span> Esporta XLSX</button>
+    <button class="export-btn" id="exportCsv" type="button"><span>📄</span> Esporta CSV</button>
+  </div>
+
+  <!-- PAGE: FESTIVITÀ -->
+  <div class="page" id="page-festività">
+    <div class="card">
+      <div class="card-title">Aggiungi festività</div>
+      <div style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-bottom:10px;">
+        Anno di riferimento: <span id="festivitaAnnoLabel" style="color:var(--accent);">2026</span> — modificabile in Settings
+      </div>
+      <div class="add-festivity-form">
+        <input type="text" id="festivitaMonthDay" placeholder="gg/mm (es. 25/12)" maxlength="5" style="flex:0 0 110px;">
+        <input type="text" id="festivitaNome" placeholder="Nome festività (es. Natale)">
+        <button class="add-btn" id="addFestivita" type="button">+ Aggiungi</button>
+      </div>
+    </div>
+    <div class="section-sep">Festività configurate</div>
+    <div id="festivitaList"></div>
+  </div>
+
+  <!-- PAGE: IMPOSTAZIONI -->
+  <div class="page" id="page-impostazioni">
+    <div class="card">
+      <div class="card-title">Configurazione orario</div>
+      <div class="setting-row">
+        <div class="setting-label">Ore dovute al giorno<div class="setting-sub">Default: 8h (giorni feriali)</div></div>
+        <input class="small-input" type="number" id="oreDovuteInput" min="1" max="12" step="0.5" value="8">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Pausa pranzo default<div class="setting-sub">Minuti (applicato ai nuovi giorni)</div></div>
+        <input class="small-input" type="number" id="pausaDefaultInput" min="0" max="120" step="5" value="60">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Orario ingresso default<div class="setting-sub">Pre-compilato all'apertura</div></div>
+        <input class="small-input" type="time" id="ingressoDefaultInput" value="08:30">
+      </div>
+    </div>
+    <div class="card" style="margin-top:0;">
+      <div class="card-title">Anno di riferimento</div>
+      <div class="setting-row">
+        <div class="setting-label">Anno<div class="setting-sub">Imposta l'anno corrente</div></div>
+        <input class="small-input" type="number" id="annoInput" min="2020" max="2040" value="2026">
+      </div>
+    </div>
+    <div class="card" style="margin-top:0;">
+      <div class="card-title">Backup e ripristino</div>
+      <div class="setting-row">
+        <div class="setting-label">
+          Esporta backup
+          <div class="setting-sub">Scarica tutti i dati in un file JSON</div>
+        </div>
+        <button class="add-btn" id="backupBtn" type="button">💾 Backup</button>
+      </div>
+      <div class="setting-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
+        <div class="setting-label">
+          Importa backup
+          <div class="setting-sub">Ripristina da un file JSON precedente</div>
+        </div>
+        <div style="display:flex; gap:8px; width:100%; align-items:center; flex-wrap:wrap;">
+          <label class="import-file-label" id="importFileLabel">
+            <input type="file" id="importFileInput" accept=".json" style="display:none;">
+            📂 Scegli file...
+          </label>
+          <span id="importFileName" style="font-size:11px;color:var(--text2);font-family:var(--mono);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Nessun file selezionato</span>
+          <button class="add-btn" id="importConfirmBtn" type="button" style="display:none;">✓ Importa</button>
+        </div>
+        <div id="importPreview" style="display:none; width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 12px; font-size:11px; font-family:var(--mono); color:var(--text2); line-height:1.8;"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:0;">
+      <div class="card-title">Gestione dati</div>
+      <div class="setting-row">
+        <div class="setting-label">Azzera tutti i dati<div class="setting-sub" style="color:var(--red);">Azione irreversibile</div></div>
+        <button class="add-btn" id="resetBtn" type="button" style="border-color:var(--red);color:var(--red);">Reset</button>
+      </div>
+    </div>
+    <div class="ore-dovute-note">Versione 1.2 — Registro Ore PWA<br>Dati salvati localmente nel browser</div>
+  </div>
+</div>
+
+<!-- MONTH CALENDAR OVERLAY -->
+<div id="calOverlay">
+  <div id="calPanel">
+    <div class="cal-header">
+      <div class="cal-nav">
+        <button class="cal-nav-btn" id="calPrevMonth" type="button">&#8249;</button>
+        <button class="cal-nav-btn" id="calNextMonth" type="button">&#8250;</button>
+      </div>
+      <div class="cal-month-title" id="calMonthTitle">Aprile 2026</div>
+      <button class="cal-close" id="calClose" type="button">✕</button>
+    </div>
+    <div class="cal-weekdays">
+      <div class="cal-weekday">Lun</div>
+      <div class="cal-weekday">Mar</div>
+      <div class="cal-weekday">Mer</div>
+      <div class="cal-weekday">Gio</div>
+      <div class="cal-weekday">Ven</div>
+      <div class="cal-weekday weekend">Sab</div>
+      <div class="cal-weekday weekend">Dom</div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <button class="cal-today-btn" id="calTodayBtn" type="button">Vai a oggi</button>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <button class="bottom-item active" data-page="oggi" type="button"><span class="bottom-icon">◎</span>Oggi</button>
+  <button class="bottom-item" data-page="archivio" type="button"><span class="bottom-icon">≡</span>Archivio</button>
+  <button class="bottom-item" data-page="festività" type="button"><span class="bottom-icon">★</span>Festività</button>
+  <button class="bottom-item" data-page="impostazioni" type="button"><span class="bottom-icon">⚙</span>Settings</button>
+</div>
+<div id="backupReminder" style="display:none; position:fixed; bottom:90px; left:50%; transform:translateX(-50%); width:calc(100% - 40px); max-width:440px; z-index:999;">
+  <div style="background:var(--surface); border:1px solid var(--yellow); border-radius:var(--radius); padding:14px 16px; box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+    <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--yellow);font-family:var(--mono);margin-bottom:6px;">💾 Backup consigliato</div>
+    <div style="font-size:13px;color:var(--text);margin-bottom:12px;" id="backupReminderMsg">Sono passati 7+ giorni dall'ultimo backup. Vuoi esportarlo ora?</div>
+    <div style="display:flex;gap:8px;">
+      <button id="backupReminderDo" style="flex:1;background:var(--yellow);border:none;border-radius:var(--radius-sm);color:#0d0d18;font-family:var(--sans);font-size:13px;font-weight:600;padding:10px;cursor:pointer;">💾 Fai backup ora</button>
+      <button id="backupReminderSnooze" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text2);font-family:var(--sans);font-size:13px;padding:10px;cursor:pointer;">Ricordami tra 7gg</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ===== DATA LAYER =====
+const DB = {
+  get(k, def) { try { const v = localStorage.getItem(k); return v !== null ? JSON.parse(v) : def; } catch { return def; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) { alert('Errore salvataggio: ' + e.message); } }
+};
+const getSettings      = () => DB.get('settings',  { oreDovute: 8, pausaDefault: 60, ingressoDefault: '08:30', anno: 2026 });
+const setSettings      = s  => DB.set('settings', s);
+const getGiorni        = () => DB.get('giorni', {});
+const setGiorni        = g  => DB.set('giorni', g);
+const getFestivita     = () => DB.get('festivita', getDefaultFestivita());
+const setFestivita     = f  => DB.set('festivita', f);
+const getLastBackup    = () => DB.get('lastBackup', null);
+const setLastBackup    = () => DB.set('lastBackup', new Date().toISOString());
+const getBackupSnoozed = () => DB.get('backupSnoozed', null);
+const setBackupSnoozed = () => DB.set('backupSnoozed', new Date().toISOString());
+
+function shouldShowBackupReminder() {
+  // Check if snoozed within last 7 days
+  const snoozed = getBackupSnoozed();
+  if (snoozed) {
+    const daysSinceSnoozed = (Date.now() - new Date(snoozed).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceSnoozed < 7) return false;
+  }
+  // Check if backup done within last 7 days
+  const last = getLastBackup();
+  if (!last) return Object.keys(getGiorni()).length > 0; // show if has data but never backed up
+  const daysSince = (Date.now() - new Date(last).getTime()) / (1000 * 60 * 60 * 24);
+  return daysSince >= 7;
+}
+
+function getDefaultFestivita() {
+  return [
+    { data: '2026-01-01', nome: 'Capodanno' },
+    { data: '2026-01-06', nome: 'Epifania' },
+    { data: '2026-04-05', nome: 'Pasqua' },
+    { data: '2026-04-06', nome: 'Pasquetta' },
+    { data: '2026-04-25', nome: 'Festa della Liberazione' },
+    { data: '2026-05-01', nome: 'Festa dei Lavoratori' },
+    { data: '2026-06-02', nome: 'Festa della Repubblica' },
+    { data: '2026-06-24', nome: 'Patrono' },
+    { data: '2026-08-15', nome: 'Ferragosto' },
+    { data: '2026-11-01', nome: 'Ognissanti' },
+    { data: '2026-12-08', nome: 'Immacolata' },
+    { data: '2026-12-25', nome: 'Natale' },
+    { data: '2026-12-26', nome: 'Santo Stefano' },
+  ];
+}
+
+// ===== STATE =====
+let currentDate     = todayStr();
+let pausaMinuti     = 60;
+let tipoGiornata    = 'normale';
+let assenzaTutta    = true;
+let assenzaMinuti   = 240; // default mezza giornata (calcolato all'init)
+let filterActive    = 'all';
+let festivitaEditing = null;
+
+// ===== DATE UTILS =====
+function todayStr() {
+  const d = new Date();
+  return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
+}
+function dateFromStr(s) { return new Date(s + 'T00:00:00'); }
+function shiftDate(s, n) {
+  const d = dateFromStr(s);
+  d.setDate(d.getDate() + n);
+  return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
+}
+function formatDateDisplay(s) {
+  const d = dateFromStr(s);
+  const mn = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'][d.getMonth()];
+  return `${d.getDate()} ${mn} ${d.getFullYear()}`;
+}
+function dayName(s) { return ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'][dateFromStr(s).getDay()]; }
+function dayNameShort(s) { return ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'][dateFromStr(s).getDay()]; }
+function isWeekend(s) { const d = dateFromStr(s).getDay(); return d === 0 || d === 6; }
+function isFestivo(s) { return !isWeekend(s) && getFestivita().some(f => f.data === s); }
+function getFestivitaName(s) { const f = getFestivita().find(f => f.data === s); return f ? f.nome : ''; }
+
+// ===== CALCOLI =====
+function timeToMinutes(t) {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+function minutesToTimeStr(m) {
+  const neg = m < 0; const abs = Math.abs(m);
+  return (neg ? '−' : '+') + String(Math.floor(abs/60)).padStart(2,'0') + ':' + String(abs%60).padStart(2,'0');
+}
+function minutesToHM(m) {
+  const h = Math.floor(m/60), min = m%60;
+  if (h === 0) return `${min}m`;
+  return min === 0 ? `${h}h` : `${h}h ${min}m`;
+}
+function getOreDovuteMin() {
+  const s = getSettings();
+  if (isWeekend(currentDate) || isFestivo(currentDate)) return 0;
+  if (tipoGiornata !== 'normale') {
+    return assenzaTutta ? 0 : Math.max(0, s.oreDovute * 60 - assenzaMinuti);
+  }
+  return s.oreDovute * 60;
+}
+
+// ===== TOAST =====
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `show ${type}`;
+  clearTimeout(t._t); t._t = setTimeout(() => { t.className = ''; }, 2300);
+}
+
+// ===== RENDER RESULT =====
+function renderResult() {
+  const ingresso = document.getElementById('ingressoInput').value;
+  const uscita   = document.getElementById('uscitaInput').value;
+  const rc = document.getElementById('resultCard');
+  const rt = document.getElementById('resultTime');
+  const rs = document.getElementById('resultSub');
+  const dovuteMin = getOreDovuteMin();
+
+  document.getElementById('uscitaPrevista').textContent =
+    ingresso ? (String(Math.floor((timeToMinutes(ingresso) + dovuteMin + pausaMinuti)/60)%24).padStart(2,'0') + ':' + String((timeToMinutes(ingresso) + dovuteMin + pausaMinuti)%60).padStart(2,'0')) : '—';
+
+  if (tipoGiornata !== 'normale' && assenzaTutta && !ingresso) {
+    rc.className = 'result-card neutral'; rt.className = 'result-time neutral';
+    rt.textContent = tipoGiornata.toUpperCase(); rs.textContent = 'Assenza per tutta la giornata'; return;
+  }
+  if (!ingresso || !uscita) {
+    rc.className = 'result-card'; rt.className = 'result-time'; rt.textContent = '—'; rs.textContent = 'Inserisci ingresso e uscita'; return;
+  }
+  const fatteMin = timeToMinutes(uscita) - timeToMinutes(ingresso) - pausaMinuti;
+  const ecc = fatteMin - dovuteMin;
+  const sub = `Ore fatte: ${minutesToHM(Math.max(0,fatteMin))} — Dovute: ${minutesToHM(dovuteMin)}`;
+  if (ecc > 0) {
+    rc.className = 'result-card positive'; rt.className = 'result-time positive';
+    rt.textContent = minutesToTimeStr(ecc); rs.textContent = `Straordinario — ${sub}`;
+  } else if (ecc < 0) {
+    rc.className = 'result-card negative'; rt.className = 'result-time negative';
+    rt.textContent = minutesToTimeStr(ecc); rs.textContent = `Da recuperare — ${sub}`;
+  } else {
+    rc.className = 'result-card neutral'; rt.className = 'result-time neutral';
+    rt.textContent = '+00:00'; rs.textContent = `Perfetto! ${sub}`;
+  }
+}
+
+// ===== DATE DISPLAY =====
+function updateDateDisplay() {
+  document.getElementById('dateDisplay').textContent = formatDateDisplay(currentDate);
+  const badge  = document.getElementById('dayBadge');
+  const dn     = dayName(currentDate);
+  const fnaz   = isFestivo(currentDate);
+  const fwknd  = isWeekend(currentDate);
+  const isToday = currentDate === todayStr();
+
+  if (fnaz) {
+    badge.textContent = `${dn} — ${getFestivitaName(currentDate)}`;
+    badge.className = 'day-badge is-festivo';
+  } else if (fwknd) {
+    badge.textContent = `${dn} — Weekend`;
+    badge.className = 'day-badge is-weekend';
+  } else if (isToday) {
+    badge.textContent = `${dn} — Oggi`;
+    badge.className = 'day-badge is-today';
+  } else {
+    badge.textContent = dn;
+    badge.className = 'day-badge';
+  }
+  loadDayData(currentDate);
+}
+
+// ===== LOAD DAY =====
+function loadDayData(dateStr) {
+  const giorni = getGiorni(), d = giorni[dateStr], s = getSettings();
+  if (d) {
+    document.getElementById('ingressoInput').value = d.ingresso || '';
+    document.getElementById('uscitaInput').value   = d.uscita   || '';
+    pausaMinuti   = d.pausa ?? s.pausaDefault;
+    tipoGiornata  = d.tipo  || 'normale';
+    assenzaTutta  = d.assenzaTutta !== false;
+    assenzaMinuti = d.assenzaMinuti || s.oreDovute * 30;
+    document.getElementById('noteInput').value = d.note || '';
+  } else {
+    document.getElementById('ingressoInput').value = '';
+    document.getElementById('uscitaInput').value   = '';
+    pausaMinuti   = s.pausaDefault;
+    tipoGiornata  = 'normale';
+    assenzaTutta  = true;
+    assenzaMinuti = s.oreDovute * 30;
+    document.getElementById('noteInput').value = '';
+  }
+  updatePausaDisplay();
+  updateTipoButtons();
+  updateAssenzaSection();
+  renderResult();
+}
+
+function updatePausaDisplay() {
+  document.getElementById('pausaVal').textContent = pausaMinuti + ' min';
+}
+
+function updateTipoButtons() {
+  ['normale','ferie','malattia','permesso'].forEach(t => {
+    const btn = document.getElementById('tag-' + t);
+    btn.className = 'tag';
+    if (t === tipoGiornata) {
+      if (t === 'ferie')    btn.className = 'tag active-ferie';
+      if (t === 'malattia') btn.className = 'tag active-malattia';
+      if (t === 'permesso') btn.className = 'tag active-permesso';
+    }
+  });
+}
+
+function updateAssenzaSection() {
+  const sec   = document.getElementById('assenzaOreSection');
+  const title = document.getElementById('assenzaOreTitle');
+  const tBtn  = document.getElementById('assenzaTuttaGiornataBtn');
+  const pBtn  = document.getElementById('assenzaParzialeBtn');
+  const pRow  = document.getElementById('assenzaParzialeRow');
+
+  if (tipoGiornata === 'normale') { sec.classList.remove('visible'); return; }
+  sec.classList.add('visible');
+  const labels = { ferie: 'Durata ferie', malattia: 'Durata malattia', permesso: 'Durata permesso' };
+  title.textContent = labels[tipoGiornata] || 'Durata assenza';
+
+  if (assenzaTutta) {
+    tBtn.classList.add('active'); pBtn.classList.remove('active'); pRow.style.display = 'none';
+  } else {
+    tBtn.classList.remove('active'); pBtn.classList.add('active'); pRow.style.display = 'block';
+  }
+  document.getElementById('assenzaVal').textContent = minutesToHM(assenzaMinuti);
+}
+
+// ===== ARCHIVIO =====
+function calcDayEcc(d, s) {
+  if (!d.ingresso || !d.uscita) return 0;
+  const tipo = d.tipo || 'normale';
+  const aT   = d.assenzaTutta !== false;
+  const aM   = d.assenzaMinuti || s.oreDovute * 30;
+  // can't use currentDate here, pass dateStr
+  return null; // placeholder — see renderArchivio
+}
+
+function renderArchivio() {
+  const giorni = getGiorni(), s = getSettings();
+  const container = document.getElementById('archivioList');
+  const allKeys = Object.keys(giorni).sort((a, b) => b.localeCompare(a));
+
+  if (!allKeys.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div>Nessun giorno salvato.<br>Inizia inserendo le ore di oggi!</div>`;
+    return;
+  }
+
+  function eccForKey(k) {
+    const d = giorni[k];
+    if (!d.ingresso || !d.uscita) return 0;
+    const tipo = d.tipo || 'normale';
+    const aT   = d.assenzaTutta !== false;
+    const aM   = d.assenzaMinuti || s.oreDovute * 30;
+    let dov    = isWeekend(k) || isFestivo(k) ? 0 : s.oreDovute * 60;
+    if (tipo !== 'normale') dov = aT ? 0 : Math.max(0, dov - aM);
+    return (timeToMinutes(d.uscita) - timeToMinutes(d.ingresso) - (d.pausa ?? s.pausaDefault)) - dov;
+  }
+
+  let filtered = allKeys;
+  if (filterActive === 'ferie')        filtered = allKeys.filter(k => giorni[k].tipo === 'ferie');
+  else if (filterActive === 'malattia') filtered = allKeys.filter(k => giorni[k].tipo === 'malattia');
+  else if (filterActive === 'permesso') filtered = allKeys.filter(k => giorni[k].tipo === 'permesso');
+  else if (filterActive === 'straordinario') filtered = allKeys.filter(k => eccForKey(k) > 0);
+
+  if (!filtered.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div>Nessun risultato per questo filtro.</div>`;
+    return;
+  }
+
+  const byMonth = {};
+  filtered.forEach(k => { const mo = k.slice(0,7); if (!byMonth[mo]) byMonth[mo]=[]; byMonth[mo].push(k); });
+  const MN = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  let html = '';
+
+  Object.keys(byMonth).sort((a,b) => b.localeCompare(a)).forEach(mo => {
+    const [y, m] = mo.split('-');
+    let mEcc = 0, inner = '';
+    byMonth[mo].sort((a,b) => b.localeCompare(a)).forEach(k => {
+      const d    = giorni[k];
+      const ecc  = eccForKey(k);
+      mEcc += ecc;
+      const tipo = d.tipo || 'normale';
+      const aT   = d.assenzaTutta !== false;
+      const aM   = d.assenzaMinuti || s.oreDovute * 30;
+
+      let tagHtml = '';
+      if (tipo==='ferie')    tagHtml = `<span class="day-row-tag tag-f">${aT?'FER':'FER∂'}</span>`;
+      else if (tipo==='malattia') tagHtml = `<span class="day-row-tag tag-m">${aT?'MAL':'MAL∂'}</span>`;
+      else if (tipo==='permesso') tagHtml = `<span class="day-row-tag tag-p">${aT?'PER':'PER∂'}</span>`;
+
+      const eccStr = d.ingresso && d.uscita ? minutesToTimeStr(ecc) : (tipo!=='normale' ? (aT?'—':minutesToHM(aM)) : '—');
+      const eccCls = ecc > 0 ? 'pos' : ecc < 0 ? 'neg' : '';
+      const hrs    = d.ingresso && d.uscita ? `${d.ingresso}–${d.uscita}` : (tipo!=='normale'?(aT?'Tutta giornata':minutesToHM(aM)):'—');
+      const rowCls = ['day-row', tipo==='ferie'?'is-ferie':'', tipo==='malattia'?'is-malattia':'', tipo==='permesso'?'is-permesso':'', (isWeekend(k)||isFestivo(k))?'is-festivo':''].join(' ').trim();
+
+      inner += `<div class="${rowCls}" onclick="editDay('${k}')">
+        <div class="day-row-date">${k.slice(8)} ${k.slice(5,7)}</div>
+        <div class="day-row-name">${dayNameShort(k)}</div>
+        <div class="day-row-hours">${hrs}</div>
+        ${tagHtml}
+        <div class="day-row-diff ${eccCls}">${eccStr}</div>
+      </div>`;
+    });
+
+    const mStr = minutesToTimeStr(Math.round(mEcc));
+    const mCls = mEcc>0?'pos':mEcc<0?'neg':'';
+    html += `<div class="month-section">
+      <div class="month-header"><span>${MN[parseInt(m)-1]} ${y}</span><span class="month-summary ${mCls}">${mStr}</span></div>
+      ${inner}
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function editDay(dateStr) {
+  currentDate = dateStr;
+  switchPage('oggi');
+  updateDateDisplay();
+}
+window.editDay = editDay;
+
+// ===== FESTIVITÀ =====
+function festDateDisplay(data) {
+  // Show only "25 dic" without year
+  const d = dateFromStr(data);
+  const mn = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'][d.getMonth()];
+  return `${d.getDate()} ${mn}`;
+}
+
+function renderFestivita() {
+  const list = document.getElementById('festivitaList');
+  const fest = [...getFestivita()].sort((a,b) => {
+    // Sort by month-day only (ignore year)
+    return a.data.slice(5).localeCompare(b.data.slice(5));
+  });
+
+  if (!fest.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🗓</div>Nessuna festività configurata.</div>'; return;
+  }
+
+  list.innerHTML = fest.map(f => {
+    const editing = festivitaEditing === f.data;
+    return `<div class="festivity-item${editing?' editing':''}">
+      <div class="festivity-main">
+        <div class="festivity-date">${festDateDisplay(f.data)}</div>
+        <div class="festivity-name">${f.nome}</div>
+        <div class="festivity-actions">
+          <button class="festivity-btn" onclick="startEdit('${f.data}')" title="Modifica">✎</button>
+          <button class="festivity-btn del" onclick="deleteFest('${f.data}')" title="Elimina">✕</button>
+        </div>
+      </div>
+      ${editing ? `
+      <div class="festivity-edit-form">
+        <input type="date" id="ef_data" value="${f.data}">
+        <input type="text" id="ef_nome" value="${f.nome}" placeholder="Nome festività">
+      </div>
+      <div class="festivity-edit-actions">
+        <button class="festivity-save-btn" onclick="saveEdit('${f.data}')">✓ Salva</button>
+        <button class="festivity-cancel-btn" onclick="cancelEdit()">Annulla</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+
+  if (festivitaEditing) {
+    setTimeout(() => { const el = document.getElementById('ef_nome'); if(el) el.focus(); }, 40);
+  }
+}
+
+function startEdit(data) { festivitaEditing = data; renderFestivita(); }
+function cancelEdit() { festivitaEditing = null; renderFestivita(); }
+function saveEdit(oldData) {
+  const nd = document.getElementById('ef_data').value;
+  const nn = document.getElementById('ef_nome').value.trim();
+  if (!nd || !nn) { showToast('Compila data e nome', 'error'); return; }
+  let f = getFestivita();
+  if (nd !== oldData && f.find(x => x.data === nd)) { showToast('Data già presente', 'error'); return; }
+  f = f.map(x => x.data === oldData ? { data: nd, nome: nn } : x);
+  setFestivita(f);
+  festivitaEditing = null;
+  renderFestivita();
+  showToast('Festività aggiornata');
+}
+function deleteFest(data) {
+  if (!confirm('Eliminare questa festività?')) return;
+  setFestivita(getFestivita().filter(x => x.data !== data));
+  renderFestivita();
+  showToast('Festività rimossa');
+}
+// Expose to global scope for inline onclick handlers
+window.startEdit = startEdit;
+window.cancelEdit = cancelEdit;
+window.saveEdit = saveEdit;
+window.deleteFest = deleteFest;
+
+// ===== EXPORT =====
+function exportCSV() {
+  const giorni = getGiorni(), s = getSettings();
+  let csv = 'Data,Giorno,Ingresso,Uscita,Pausa(min),Tipo,Assenza,OreAssenza,OreFatte,OreDovute,Eccedenza(h),Note\n';
+  Object.keys(giorni).sort().forEach(k => {
+    const d    = giorni[k];
+    const tipo = d.tipo || 'normale';
+    const aT   = d.assenzaTutta !== false;
+    const aM   = d.assenzaMinuti || s.oreDovute * 30;
+    const pausa = d.pausa ?? s.pausaDefault;
+    let dov = isWeekend(k)||isFestivo(k) ? 0 : s.oreDovute * 60;
+    if (tipo !== 'normale') dov = aT ? 0 : Math.max(0, dov - aM);
+    let fatte='', ecc='';
+    if (d.ingresso && d.uscita) {
+      const f = timeToMinutes(d.uscita) - timeToMinutes(d.ingresso) - pausa;
+      fatte = (f/60).toFixed(2); ecc = ((f-dov)/60).toFixed(2);
+    }
+    csv += `${k},${dayName(k)},${d.ingresso||''},${d.uscita||''},${pausa},${tipo},` +
+      `${tipo!=='normale'?(aT?'tutta giornata':'parziale'):''},` +
+      `${tipo!=='normale'&&!aT?(aM/60).toFixed(2):''},` +
+      `${fatte},${(dov/60).toFixed(2)},${ecc},"${(d.note||'').replace(/"/g,'""')}"\n`;
+  });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})), download:`registro-ore_${todayStr()}.csv` });
+  a.click(); showToast('CSV esportato!');
+}
+
+function exportXLSX() {
+  if (!window.XLSX) {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = doXLSX; s.onerror = () => showToast('Offline: usa CSV', 'error');
+    document.head.appendChild(s); showToast('Caricamento libreria...');
+    return;
+  }
+  doXLSX();
+}
+
+function doXLSX() {
+  const giorni = getGiorni(), s = getSettings();
+  const wb = XLSX.utils.book_new();
+  const byM = {};
+  Object.keys(giorni).sort().forEach(k => { const mo=k.slice(0,7); if(!byM[mo]) byM[mo]=[]; byM[mo].push(k); });
+  const MN = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+  Object.keys(byM).sort().forEach(mo => {
+    const [, m] = mo.split('-');
+    const rows = [['Data','Giorno','Ingresso','Uscita','Pausa(min)','Tipo','Assenza','OreAssenza','OreFatte','OreDovute','Eccedenza(h)','Note']];
+    byM[mo].sort().forEach(k => {
+      const d    = giorni[k];
+      const tipo = d.tipo || 'normale';
+      const aT   = d.assenzaTutta !== false;
+      const aM   = d.assenzaMinuti || s.oreDovute * 30;
+      const pausa = d.pausa ?? s.pausaDefault;
+      let dov = isWeekend(k)||isFestivo(k) ? 0 : s.oreDovute * 60;
+      if (tipo !== 'normale') dov = aT ? 0 : Math.max(0, dov - aM);
+      let fatte=null, ecc=null;
+      if (d.ingresso && d.uscita) {
+        const f = timeToMinutes(d.uscita) - timeToMinutes(d.ingresso) - pausa;
+        fatte = +(f/60).toFixed(2); ecc = +((f-dov)/60).toFixed(2);
+      }
+      rows.push([k, dayName(k), d.ingresso||'', d.uscita||'', pausa, tipo,
+        tipo!=='normale'?(aT?'tutta giornata':'parziale'):'',
+        tipo!=='normale'&&!aT?+(aM/60).toFixed(2):null,
+        fatte, +(dov/60).toFixed(2), ecc, d.note||'']);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [10,12,10,10,10,10,14,11,10,10,12,20].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, MN[parseInt(m)-1]);
+  });
+  XLSX.writeFile(wb, `registro-ore_${todayStr()}.xlsx`);
+  showToast('XLSX esportato!');
+}
+
+// ===== PAGE NAV =====
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('[data-page]').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll(`[data-page="${name}"]`).forEach(b => b.classList.add('active'));
+  if (name === 'archivio') renderArchivio();
+  if (name === 'festività') renderFestivita();
+}
+
+// ===== SAVE =====
+function saveDay() {
+  const giorni = getGiorni();
+  giorni[currentDate] = {
+    ingresso: document.getElementById('ingressoInput').value,
+    uscita:   document.getElementById('uscitaInput').value,
+    pausa:    pausaMinuti, tipo: tipoGiornata,
+    assenzaTutta, assenzaMinuti,
+    note:     document.getElementById('noteInput').value,
+    savedAt:  new Date().toISOString()
+  };
+  setGiorni(giorni);
+  const btn = document.getElementById('saveBtn');
+  btn.textContent = '✓ Salvato!'; btn.classList.add('saved');
+  setTimeout(() => { btn.textContent = 'Salva giornata'; btn.classList.remove('saved'); }, 1800);
+  showToast('Giornata salvata');
+  // Check backup reminder after a short delay
+  setTimeout(checkBackupReminder, 600);
+}
+
+function checkBackupReminder() {
+  if (!shouldShowBackupReminder()) return;
+  const last = getLastBackup();
+  const msg = last
+    ? `Ultimo backup: ${new Date(last).toLocaleDateString('it-IT')}. Sono passati 7+ giorni — vuoi esportarlo ora?`
+    : 'Non hai mai fatto un backup. Vuoi esportarlo ora per proteggere i tuoi dati?';
+  document.getElementById('backupReminderMsg').textContent = msg;
+  document.getElementById('backupReminder').style.display = 'block';
+}
+
+function doBackup() {
+  const backup = {
+    version: '1.2',
+    exportedAt: new Date().toISOString(),
+    settings: getSettings(),
+    giorni: getGiorni(),
+    festivita: getFestivita()
+  };
+  const json = JSON.stringify(backup, null, 2);
+  const date = todayStr();
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([json], { type: 'application/json' })),
+    download: `registro-ore_backup_${date}.json`
+  });
+  a.click();
+  setLastBackup();
+  document.getElementById('backupReminder').style.display = 'none';
+  showToast('Backup esportato!');
+}
+
+// ===== SETTINGS =====
+function initSettings() {
+  const s = getSettings();
+  document.getElementById('oreDovuteInput').value    = s.oreDovute;
+  document.getElementById('pausaDefaultInput').value = s.pausaDefault;
+  document.getElementById('ingressoDefaultInput').value = s.ingressoDefault;
+  document.getElementById('annoInput').value         = s.anno;
+  document.getElementById('yearLabel').textContent   = s.anno;
+  const fl = document.getElementById('festivitaAnnoLabel');
+  if (fl) fl.textContent = s.anno;
+  pausaMinuti   = s.pausaDefault;
+  assenzaMinuti = s.oreDovute * 30;
+}
+
+function saveSettings() {
+  const oldAnno = getSettings().anno;
+  const s = {
+    oreDovute:       parseFloat(document.getElementById('oreDovuteInput').value) || 8,
+    pausaDefault:    parseInt(document.getElementById('pausaDefaultInput').value)  || 60,
+    ingressoDefault: document.getElementById('ingressoDefaultInput').value || '08:30',
+    anno:            parseInt(document.getElementById('annoInput').value) || 2026,
+  };
+  setSettings(s);
+  document.getElementById('yearLabel').textContent = s.anno;
+  const fl = document.getElementById('festivitaAnnoLabel');
+  if (fl) fl.textContent = s.anno;
+
+  // Se l anno e cambiato aggiorna le date di tutte le festivita
+  if (s.anno !== oldAnno) {
+    const fest = getFestivita().map(f => ({
+      data: String(s.anno) + f.data.slice(4),
+      nome: f.nome
+    }));
+    setFestivita(fest);
+    if (document.getElementById('page-festività') && document.getElementById('page-festività').classList.contains('active')) {
+      renderFestivita();
+    }
+    showToast('Anno aggiornato — festività migrate a ' + s.anno);
+  } else {
+    showToast('Impostazioni salvate');
+  }
+  renderResult();
+}
+
+// ===== BOOT =====
+document.addEventListener('DOMContentLoaded', () => {
+  initSettings();
+  currentDate = todayStr();
+  updateDateDisplay();
+
+  // ── Navigazione date ──
+  document.getElementById('prevDay').addEventListener('click', () => {
+    currentDate = shiftDate(currentDate, -1); updateDateDisplay();
+  });
+  document.getElementById('nextDay').addEventListener('click', () => {
+    currentDate = shiftDate(currentDate, 1);  updateDateDisplay();
+  });
+
+  // Tap su data → apre calendario mensile
+  document.getElementById('dateDisplay').addEventListener('click', openCalendar);
+
+  // ── Calendario mensile ──
+  let calYear, calMonth; // which month is shown in the overlay
+
+  function openCalendar() {
+    const d = dateFromStr(currentDate);
+    calYear  = d.getFullYear();
+    calMonth = d.getMonth(); // 0-based
+    renderCalendar();
+    document.getElementById('calOverlay').classList.add('open');
+  }
+
+  function closeCalendar() {
+    document.getElementById('calOverlay').classList.remove('open');
+  }
+
+  function renderCalendar() {
+    const MN = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+    document.getElementById('calMonthTitle').textContent = `${MN[calMonth]} ${calYear}`;
+
+    const giorni = getGiorni();
+    const s      = getSettings();
+    const grid   = document.getElementById('calGrid');
+    const today  = todayStr();
+
+    // First day of month (0=Sun..6=Sat → convert to Mon=0)
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const startOffset = (firstDay === 0 ? 6 : firstDay - 1); // Mon-based
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+    let html = '';
+    // Empty cells before first day
+    for (let i = 0; i < startOffset; i++) html += '<div class="cal-day empty"></div>';
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dow = new Date(calYear, calMonth, d).getDay(); // 0=Sun
+      const isWknd  = dow === 0 || dow === 6;
+      const isFest  = isFestivo(ds);
+      const isTod   = ds === today;
+      const isSel   = ds === currentDate;
+      const dayData = giorni[ds];
+
+      let cls = 'cal-day';
+      if (isWknd)  cls += ' weekend';
+      if (isFest)  cls += ' festivo';
+      if (isTod)   cls += ' today';
+      if (isSel)   cls += ' selected';
+
+      if (dayData && (dayData.ingresso || dayData.tipo !== 'normale')) {
+        cls += ' has-data';
+        // Check if negative
+        if (dayData.ingresso && dayData.uscita) {
+          const tipo = dayData.tipo || 'normale';
+          const aT   = dayData.assenzaTutta !== false;
+          const aM   = dayData.assenzaMinuti || s.oreDovute * 30;
+          let dov    = isWknd || isFestivo(ds) ? 0 : s.oreDovute * 60;
+          if (tipo !== 'normale') dov = aT ? 0 : Math.max(0, dov - aM);
+          const ecc  = (timeToMinutes(dayData.uscita) - timeToMinutes(dayData.ingresso) - (dayData.pausa ?? s.pausaDefault)) - dov;
+          if (ecc < 0) cls += ' neg-data';
+        }
+      }
+
+      html += `<div class="${cls}" onclick="calSelectDay('${ds}')">${d}</div>`;
+    }
+
+    grid.innerHTML = html;
+  }
+
+  window.calSelectDay = function(ds) {
+    currentDate = ds;
+    closeCalendar();
+    updateDateDisplay();
+  };
+
+  document.getElementById('calClose').addEventListener('click', closeCalendar);
+  document.getElementById('calOverlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('calOverlay')) closeCalendar();
+  });
+  document.getElementById('calPrevMonth').addEventListener('click', () => {
+    calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
+  });
+  document.getElementById('calNextMonth').addEventListener('click', () => {
+    calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+  });
+  document.getElementById('calTodayBtn').addEventListener('click', () => {
+    const t = todayStr(); const d = dateFromStr(t);
+    calYear = d.getFullYear(); calMonth = d.getMonth();
+    renderCalendar();
+    currentDate = t;
+    closeCalendar();
+    updateDateDisplay();
+  });
+
+  // ── Orari ──
+  document.getElementById('ingressoInput').addEventListener('input', renderResult);
+  document.getElementById('uscitaInput').addEventListener('input',   renderResult);
+
+  // ── Pausa pranzo (step 5 min) ──
+  document.getElementById('pausaMinus').addEventListener('click', () => { pausaMinuti = Math.max(0, pausaMinuti-5); updatePausaDisplay(); renderResult(); });
+  document.getElementById('pausaPlus').addEventListener('click',  () => { pausaMinuti = Math.min(180,pausaMinuti+5); updatePausaDisplay(); renderResult(); });
+
+  // ── Tipo giornata ──
+  ['normale','ferie','malattia','permesso'].forEach(t => {
+    document.getElementById('tag-'+t).addEventListener('click', () => {
+      tipoGiornata = t;
+      if (t === 'normale') assenzaTutta = true;
+      updateTipoButtons(); updateAssenzaSection(); renderResult();
+    });
+  });
+
+  // ── Assenza toggle ──
+  document.getElementById('assenzaTuttaGiornataBtn').addEventListener('click', () => {
+    assenzaTutta = true; updateAssenzaSection(); renderResult();
+  });
+  document.getElementById('assenzaParzialeBtn').addEventListener('click', () => {
+    assenzaTutta = false;
+    if (!assenzaMinuti) assenzaMinuti = getSettings().oreDovute * 30;
+    updateAssenzaSection(); renderResult();
+  });
+
+  // ── Stepper ore assenza (step 30 min) ──
+  document.getElementById('assenzaMinus').addEventListener('click', () => {
+    assenzaMinuti = Math.max(30, assenzaMinuti - 30);
+    document.getElementById('assenzaVal').textContent = minutesToHM(assenzaMinuti);
+    renderResult();
+  });
+  document.getElementById('assenzaPlus').addEventListener('click', () => {
+    const max = getSettings().oreDovute * 60;
+    assenzaMinuti = Math.min(max, assenzaMinuti + 30);
+    document.getElementById('assenzaVal').textContent = minutesToHM(assenzaMinuti);
+    renderResult();
+  });
+
+  // ── Salva giornata ──
+  document.getElementById('saveBtn').addEventListener('click', saveDay);
+
+  // ── Page nav ──
+  document.querySelectorAll('[data-page]').forEach(btn => {
+    btn.addEventListener('click', () => switchPage(btn.dataset.page));
+  });
+
+  // ── Filter chips ──
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active'); filterActive = chip.dataset.filter; renderArchivio();
+    });
+  });
+
+  // ── Export ──
+  document.getElementById('exportXlsx').addEventListener('click', exportXLSX);
+  document.getElementById('exportCsv').addEventListener('click',  exportCSV);
+
+  // ── Aggiungi festività ──
+  document.getElementById('addFestivita').addEventListener('click', () => {
+    const raw  = document.getElementById('festivitaMonthDay').value.trim();
+    const nome = document.getElementById('festivitaNome').value.trim();
+    if (!raw || !nome) { showToast('Compila giorno/mese e nome', 'error'); return; }
+    // Accept gg/mm or gg-mm
+    const parts = raw.replace('-','/').split('/');
+    if (parts.length !== 2) { showToast('Formato: gg/mm (es. 25/12)', 'error'); return; }
+    const [gg, mm] = parts.map(x => x.trim().padStart(2,'0'));
+    const anno = getSettings().anno;
+    const data = `${anno}-${mm}-${gg}`;
+    // Basic validation
+    const d = dateFromStr(data);
+    if (isNaN(d.getTime()) || d.getMonth()+1 !== parseInt(mm) || d.getDate() !== parseInt(gg)) {
+      showToast('Data non valida', 'error'); return;
+    }
+    const f = getFestivita();
+    if (f.find(x => x.data === data)) { showToast('Data già presente', 'error'); return; }
+    f.push({ data, nome }); setFestivita(f);
+    document.getElementById('festivitaMonthDay').value = '';
+    document.getElementById('festivitaNome').value = '';
+    renderFestivita(); showToast('Festività aggiunta');
+  });
+
+  // ── Settings ──
+  ['oreDovuteInput','pausaDefaultInput','ingressoDefaultInput','annoInput'].forEach(id => {
+    document.getElementById(id).addEventListener('change', saveSettings);
+  });
+
+  // ── Backup ──
+  document.getElementById('backupBtn').addEventListener('click', doBackup);
+
+  // ── Import ──
+  let importedData = null;
+
+  document.getElementById('importFileInput').addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    document.getElementById('importFileName').textContent = file.name;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        // Validate structure
+        if (!data.giorni && !data.settings && !data.festivita) {
+          throw new Error('Formato non riconosciuto');
+        }
+        importedData = data;
+
+        // Build preview
+        const giorni = data.giorni ? Object.keys(data.giorni).length : 0;
+        const fest   = data.festivita ? data.festivita.length : 0;
+        const anno   = data.settings ? data.settings.anno : '—';
+        const exp    = data.exportedAt ? new Date(data.exportedAt).toLocaleDateString('it-IT') : '—';
+
+        document.getElementById('importPreview').style.display = 'block';
+        document.getElementById('importPreview').innerHTML =
+          `📅 Esportato il: <strong style="color:var(--text)">${exp}</strong><br>` +
+          `📆 Anno: <strong style="color:var(--text)">${anno}</strong><br>` +
+          `🗓 Giorni registrati: <strong style="color:var(--green)">${giorni}</strong><br>` +
+          `⭐ Festività: <strong style="color:var(--text)">${fest}</strong>`;
+
+        document.getElementById('importConfirmBtn').style.display = 'inline-block';
+        showToast('File valido — conferma per importare');
+      } catch(err) {
+        importedData = null;
+        document.getElementById('importPreview').style.display = 'block';
+        document.getElementById('importPreview').innerHTML =
+          `<span style="color:var(--red)">⚠ File non valido: ${err.message}</span>`;
+        document.getElementById('importConfirmBtn').style.display = 'none';
+        showToast('File non valido', 'error');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById('importConfirmBtn').addEventListener('click', () => {
+    if (!importedData) return;
+    const attuali = Object.keys(getGiorni()).length;
+    const msg = attuali > 0
+      ? `Sostituire i ${attuali} giorni già presenti con i dati del backup? L'operazione è irreversibile.`
+      : 'Importare i dati dal backup?';
+    if (!confirm(msg)) return;
+
+    if (importedData.giorni)    setGiorni(importedData.giorni);
+    if (importedData.festivita) setFestivita(importedData.festivita);
+    if (importedData.settings)  setSettings(importedData.settings);
+
+    // Reset UI state
+    importedData = null;
+    document.getElementById('importFileName').textContent = 'Nessun file selezionato';
+    document.getElementById('importPreview').style.display = 'none';
+    document.getElementById('importConfirmBtn').style.display = 'none';
+    document.getElementById('importFileInput').value = '';
+
+    showToast('Backup importato — ricarico...');
+    setTimeout(() => location.reload(), 1200);
+  });
+
+  // ── Backup reminder buttons ──
+  document.getElementById('backupReminderDo').addEventListener('click', doBackup);
+  document.getElementById('backupReminderSnooze').addEventListener('click', () => {
+    setBackupSnoozed();
+    document.getElementById('backupReminder').style.display = 'none';
+    showToast('Ti ricorderò tra 7 giorni');
+  });
+
+  // ── Reset ──
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    const giorni = getGiorni();
+    const nGiorni = Object.keys(giorni).length;
+    if (nGiorni > 0) {
+      const last = getLastBackup();
+      const lastStr = last ? new Date(last).toLocaleDateString('it-IT') : 'mai';
+      const choice = confirm(
+        `⚠️ Stai per cancellare ${nGiorni} giorni registrati.\n\nUltimo backup: ${lastStr}\n\nVuoi prima esportare un backup?\n\nPremi OK per fare il backup ora, Annulla per saltare e cancellare direttamente.`
+      );
+      if (choice) {
+        doBackup();
+        setTimeout(() => {
+          if (confirm('Backup esportato. Procedere con il reset?')) { localStorage.clear(); location.reload(); }
+        }, 500);
+        return;
+      }
+    }
+    if (confirm('Sei sicuro? Tutti i dati verranno cancellati definitivamente.')) { localStorage.clear(); location.reload(); }
+  });
+
+  // ── PWA install ──
+  let dp;
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); dp = e; document.getElementById('installBanner').classList.remove('hidden'); });
+  document.getElementById('installBtn').addEventListener('click', async () => { if(!dp) return; dp.prompt(); await dp.userChoice; dp=null; document.getElementById('installBanner').classList.add('hidden'); });
+  document.getElementById('installClose').addEventListener('click', () => document.getElementById('installBanner').classList.add('hidden'));
+});
+
+// ===== SERVICE WORKER =====
+if ('serviceWorker' in navigator) {
+  const swBlob = new Blob([`const C='tl-v2';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['/']))));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>caches.match('/')))));`], {type:'application/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});
+}
+
+// ===== MANIFEST =====
+const mL = document.createElement('link'); mL.rel = 'manifest';
+mL.href = URL.createObjectURL(new Blob([JSON.stringify({ name:'Timelog', short_name:'Registro Ore', start_url:'.', display:'standalone', background_color:'#0d0d18', theme_color:'#1a1a2e', icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231a1a2e'/%3E%3Ccircle cx='96' cy='96' r='52' stroke='%236c63ff' stroke-width='8' fill='none'/%3E%3Cline x1='96' y1='96' x2='96' y2='54' stroke='%236c63ff' stroke-width='6' stroke-linecap='round'/%3E%3Cline x1='96' y1='96' x2='124' y2='110' stroke='%23ff6584' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E",sizes:'192x192',type:'image/svg+xml'}] })], {type:'application/json'}));
+document.head.appendChild(mL);
+</script>
+</body>
+</html>
