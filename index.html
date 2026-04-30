@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#1a1a2e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -163,6 +163,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .tag-p { background: rgba(255,209,102,0.2); color: var(--yellow); }
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text2); font-size: 13px; line-height: 1.6; }
 .empty-icon { font-size: 32px; margin-bottom: 10px; }
+.note-indicator { background: transparent; border: none; cursor: pointer; font-size: 13px; padding: 0 2px; flex-shrink: 0; opacity: 0.7; transition: opacity 0.15s; }
+.note-indicator:hover { opacity: 1; }
+.day-note-text { font-size: 11px; color: var(--text2); font-family: var(--sans); line-height: 1.5; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 6px !important; }
 
 /* FESTIVITÀ */
 .festivity-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 4px; padding: 10px 14px; transition: border-color 0.15s; }
@@ -192,8 +195,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .add-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* EXPORT */
-.export-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: var(--sans); font-size: 14px; font-weight: 500; padding: 16px; width: 100%; cursor: pointer; transition: all 0.2s; }
-.export-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* SETTINGS */
 .setting-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
@@ -236,6 +237,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; }
 .filter-chip { padding: 4px 12px; border-radius: 14px; font-size: 11px; font-family: var(--mono); border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; transition: all 0.15s; }
 .filter-chip.active { background: var(--surface2); border-color: var(--accent); color: var(--accent); }
+#archivioSearch:focus { border-color: var(--accent); }
+#archivioSearch::placeholder { color: var(--text2); }
 
 .section-sep { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text2); font-family: var(--mono); padding: 4px 0 8px; }
 
@@ -399,9 +402,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       <button class="filter-chip" data-filter="permesso" type="button">Permesso</button>
       <button class="filter-chip" data-filter="straordinario" type="button">Straordinario</button>
     </div>
+    <input type="search" id="archivioSearch" placeholder="🔍 Cerca per data (es. 2026-04) o nota..." style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:var(--sans);font-size:13px;padding:10px 14px;width:100%;outline:none;transition:border-color 0.15s;" oninput="renderArchivio()">
     <div id="archivioList"></div>
-    <button class="export-btn" id="exportXlsx" type="button"><span>📊</span> Esporta XLSX</button>
-    <button class="export-btn" id="exportCsv" type="button"><span>📄</span> Esporta CSV</button>
   </div>
 
   <!-- PAGE: FESTIVITÀ -->
@@ -434,8 +436,12 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         <input class="small-input" type="number" id="pausaDefaultInput" min="0" max="120" step="5" value="60">
       </div>
       <div class="setting-row">
-        <div class="setting-label">Orario ingresso default<div class="setting-sub">Pre-compilato all'apertura</div></div>
+        <div class="setting-label">Orario ingresso default<div class="setting-sub">Pre-compilato sui nuovi giorni</div></div>
         <input class="small-input" type="time" id="ingressoDefaultInput" value="08:30">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Orario uscita default<div class="setting-sub">Pre-compilato sui nuovi giorni</div></div>
+        <input class="small-input" type="time" id="uscitaDefaultInput" value="17:30">
       </div>
     </div>
     <div class="card" style="margin-top:0;">
@@ -443,6 +449,17 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       <div class="setting-row">
         <div class="setting-label">Anno<div class="setting-sub">Imposta l'anno corrente</div></div>
         <input class="small-input" type="number" id="annoInput" min="2020" max="2040" value="2026">
+      </div>
+    </div>
+    <div class="card" style="margin-top:0;">
+      <div class="card-title">Esportazione dati</div>
+      <div class="setting-row">
+        <div class="setting-label">Esporta XLSX<div class="setting-sub">Un foglio per mese con totali</div></div>
+        <button class="add-btn" id="exportXlsx" type="button">📊 XLSX</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Esporta CSV<div class="setting-sub">Compatibile con qualsiasi app</div></div>
+        <button class="add-btn" id="exportCsv" type="button">📄 CSV</button>
       </div>
     </div>
     <div class="card" style="margin-top:0;">
@@ -530,7 +547,7 @@ const DB = {
   get(k, def) { try { const v = localStorage.getItem(k); return v !== null ? JSON.parse(v) : def; } catch { return def; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) { alert('Errore salvataggio: ' + e.message); } }
 };
-const getSettings      = () => DB.get('settings',  { oreDovute: 8, pausaDefault: 60, ingressoDefault: '08:30', anno: 2026 });
+const getSettings      = () => DB.get('settings',  { oreDovute: 8, pausaDefault: 60, ingressoDefault: '08:30', uscitaDefault: '17:30', anno: 2026 });
 const setSettings      = s  => DB.set('settings', s);
 const getGiorni        = () => DB.get('giorni', {});
 const setGiorni        = g  => DB.set('giorni', g);
@@ -619,13 +636,29 @@ function minutesToHM(m) {
   if (h === 0) return `${min}m`;
   return min === 0 ? `${h}h` : `${h}h ${min}m`;
 }
-function getOreDovuteMin() {
+// FIX 13: single shared helper used by renderResult, renderArchivio, renderCalendar
+function calcOreDovuteForDay(dateStr, tipo, assenzaTutta, assenzaMinuti, festCache) {
   const s = getSettings();
-  if (isWeekend(currentDate) || isFestivo(currentDate)) return 0;
-  if (tipoGiornata !== 'normale') {
+  const festivo = festCache ? (!isWeekend(dateStr) && festCache.some(f => f.data === dateStr)) : isFestivo(dateStr);
+  if (isWeekend(dateStr) || festivo) return 0;
+  if (tipo && tipo !== 'normale') {
     return assenzaTutta ? 0 : Math.max(0, s.oreDovute * 60 - assenzaMinuti);
   }
   return s.oreDovute * 60;
+}
+function getOreDovuteMin() {
+  return calcOreDovuteForDay(currentDate, tipoGiornata, assenzaTutta, assenzaMinuti, null);
+}
+
+// ===== XSS PROTECTION =====
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ===== TOAST =====
@@ -706,8 +739,12 @@ function loadDayData(dateStr) {
     assenzaMinuti = d.assenzaMinuti || s.oreDovute * 30;
     document.getElementById('noteInput').value = d.note || '';
   } else {
-    document.getElementById('ingressoInput').value = '';
-    document.getElementById('uscitaInput').value   = '';
+    // Apply defaults for new (unsaved) days — only on working days
+    const isWorkDay = !isWeekend(dateStr) && !isFestivo(dateStr);
+    const ingrDef = s.ingressoDefault ?? '08:30';
+    const uscDef  = s.uscitaDefault   ?? '17:30';
+    document.getElementById('ingressoInput').value = isWorkDay ? ingrDef : '';
+    document.getElementById('uscitaInput').value   = isWorkDay ? uscDef  : '';
     pausaMinuti   = s.pausaDefault;
     tipoGiornata  = 'normale';
     assenzaTutta  = true;
@@ -757,18 +794,12 @@ function updateAssenzaSection() {
 }
 
 // ===== ARCHIVIO =====
-function calcDayEcc(d, s) {
-  if (!d.ingresso || !d.uscita) return 0;
-  const tipo = d.tipo || 'normale';
-  const aT   = d.assenzaTutta !== false;
-  const aM   = d.assenzaMinuti || s.oreDovute * 30;
-  // can't use currentDate here, pass dateStr
-  return null; // placeholder — see renderArchivio
-}
-
 function renderArchivio() {
   const giorni = getGiorni(), s = getSettings();
   const container = document.getElementById('archivioList');
+  // FIX 8: cache festivita once to avoid repeated localStorage reads
+  const _festivita = getFestivita();
+  const _isFestivo = ds => !isWeekend(ds) && _festivita.some(f => f.data === ds);
   const allKeys = Object.keys(giorni).sort((a, b) => b.localeCompare(a));
 
   if (!allKeys.length) {
@@ -782,16 +813,23 @@ function renderArchivio() {
     const tipo = d.tipo || 'normale';
     const aT   = d.assenzaTutta !== false;
     const aM   = d.assenzaMinuti || s.oreDovute * 30;
-    let dov    = isWeekend(k) || isFestivo(k) ? 0 : s.oreDovute * 60;
-    if (tipo !== 'normale') dov = aT ? 0 : Math.max(0, dov - aM);
+    const dov  = calcOreDovuteForDay(k, tipo, aT, aM, _festivita);
     return (timeToMinutes(d.uscita) - timeToMinutes(d.ingresso) - (d.pausa ?? s.pausaDefault)) - dov;
   }
 
+  const searchTerm = (document.getElementById('archivioSearch')?.value || '').toLowerCase().trim();
   let filtered = allKeys;
   if (filterActive === 'ferie')        filtered = allKeys.filter(k => giorni[k].tipo === 'ferie');
   else if (filterActive === 'malattia') filtered = allKeys.filter(k => giorni[k].tipo === 'malattia');
   else if (filterActive === 'permesso') filtered = allKeys.filter(k => giorni[k].tipo === 'permesso');
   else if (filterActive === 'straordinario') filtered = allKeys.filter(k => eccForKey(k) > 0);
+  // Apply search filter
+  if (searchTerm) {
+    filtered = filtered.filter(k =>
+      k.includes(searchTerm) ||
+      (giorni[k].note && giorni[k].note.toLowerCase().includes(searchTerm))
+    );
+  }
 
   if (!filtered.length) {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div>Nessun risultato per questo filtro.</div>`;
@@ -820,16 +858,20 @@ function renderArchivio() {
       else if (tipo==='permesso') tagHtml = `<span class="day-row-tag tag-p">${aT?'PER':'PER∂'}</span>`;
 
       const eccStr = d.ingresso && d.uscita ? minutesToTimeStr(ecc) : (tipo!=='normale' ? (aT?'—':minutesToHM(aM)) : '—');
+      const noteStr = d.note ? escHtml(d.note) : '';
       const eccCls = ecc > 0 ? 'pos' : ecc < 0 ? 'neg' : '';
       const hrs    = d.ingresso && d.uscita ? `${d.ingresso}–${d.uscita}` : (tipo!=='normale'?(aT?'Tutta giornata':minutesToHM(aM)):'—');
       const rowCls = ['day-row', tipo==='ferie'?'is-ferie':'', tipo==='malattia'?'is-malattia':'', tipo==='permesso'?'is-permesso':'', (isWeekend(k)||isFestivo(k))?'is-festivo':''].join(' ').trim();
 
-      inner += `<div class="${rowCls}" onclick="editDay('${k}')">
+      const hasNote = d.note && d.note.trim().length > 0;
+      inner += `<div class="${rowCls}" onclick="editDay('${k}')" style="flex-wrap:wrap;">
         <div class="day-row-date">${k.slice(8)} ${k.slice(5,7)}</div>
         <div class="day-row-name">${dayNameShort(k)}</div>
-        <div class="day-row-hours">${hrs}</div>
+        <div class="day-row-hours">${escHtml(hrs)}</div>
         ${tagHtml}
+        ${hasNote ? `<button class="note-indicator" onclick="toggleNote(event,'note-${k}')" title="Vedi note">📝</button>` : ''}
         <div class="day-row-diff ${eccCls}">${eccStr}</div>
+        ${hasNote ? `<div id="note-${k}" class="day-note-text" style="display:none;width:100%;padding:6px 0 2px;">${noteStr}</div>` : ''}
       </div>`;
     });
 
@@ -850,6 +892,13 @@ function editDay(dateStr) {
   updateDateDisplay();
 }
 window.editDay = editDay;
+
+function toggleNote(e, id) {
+  e.stopPropagation();
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+window.toggleNote = toggleNote;
 
 // ===== FESTIVITÀ =====
 function festDateDisplay(data) {
@@ -875,7 +924,7 @@ function renderFestivita() {
     return `<div class="festivity-item${editing?' editing':''}">
       <div class="festivity-main">
         <div class="festivity-date">${festDateDisplay(f.data)}</div>
-        <div class="festivity-name">${f.nome}</div>
+        <div class="festivity-name">${escHtml(f.nome)}</div>
         <div class="festivity-actions">
           <button class="festivity-btn" onclick="startEdit('${f.data}')" title="Modifica">✎</button>
           <button class="festivity-btn del" onclick="deleteFest('${f.data}')" title="Elimina">✕</button>
@@ -925,26 +974,64 @@ window.saveEdit = saveEdit;
 window.deleteFest = deleteFest;
 
 // ===== EXPORT =====
-function exportCSV() {
+function buildAllDaysForExport() {
+  // Build complete list of every calendar day in the data range,
+  // including weekends and festivita not explicitly saved
   const giorni = getGiorni(), s = getSettings();
-  let csv = 'Data,Giorno,Ingresso,Uscita,Pausa(min),Tipo,Assenza,OreAssenza,OreFatte,OreDovute,Eccedenza(h),Note\n';
-  Object.keys(giorni).sort().forEach(k => {
-    const d    = giorni[k];
+  const fest   = getFestivita();
+  const _isFest = ds => !isWeekend(ds) && fest.some(f => f.data === ds);
+  const _festName = ds => { const f = fest.find(f => f.data === ds); return f ? f.nome : ''; };
+
+  const savedKeys = Object.keys(giorni);
+  if (!savedKeys.length) return [];
+
+  // Find date range
+  const sorted = [...savedKeys].sort();
+  const start  = dateFromStr(sorted[0]);
+  const end    = dateFromStr(sorted[sorted.length - 1]);
+
+  const rows = [];
+  const cur  = new Date(start);
+  while (cur <= end) {
+    const ds   = [cur.getFullYear(), String(cur.getMonth()+1).padStart(2,'0'), String(cur.getDate()).padStart(2,'0')].join('-');
+    const d    = giorni[ds] || {};
     const tipo = d.tipo || 'normale';
     const aT   = d.assenzaTutta !== false;
     const aM   = d.assenzaMinuti || s.oreDovute * 30;
     const pausa = d.pausa ?? s.pausaDefault;
-    let dov = isWeekend(k)||isFestivo(k) ? 0 : s.oreDovute * 60;
-    if (tipo !== 'normale') dov = aT ? 0 : Math.max(0, dov - aM);
-    let fatte='', ecc='';
+    const wknd = isWeekend(ds);
+    const fest_ = _isFest(ds);
+    const dov  = calcOreDovuteForDay(ds, tipo, aT, aM, fest);
+
+    let oreFatte = null, ecc = null;
     if (d.ingresso && d.uscita) {
       const f = timeToMinutes(d.uscita) - timeToMinutes(d.ingresso) - pausa;
-      fatte = (f/60).toFixed(2); ecc = ((f-dov)/60).toFixed(2);
+      oreFatte = +(f/60).toFixed(2);
+      ecc      = +((f - dov)/60).toFixed(2);
     }
-    csv += `${k},${dayName(k)},${d.ingresso||''},${d.uscita||''},${pausa},${tipo},` +
-      `${tipo!=='normale'?(aT?'tutta giornata':'parziale'):''},` +
-      `${tipo!=='normale'&&!aT?(aM/60).toFixed(2):''},` +
-      `${fatte},${(dov/60).toFixed(2)},${ecc},"${(d.note||'').replace(/"/g,'""')}"\n`;
+
+    let tipoLabel = tipo;
+    if (wknd)  tipoLabel = 'weekend';
+    if (fest_) tipoLabel = 'festivo';
+
+    rows.push({ ds, d, tipo: tipoLabel, aT, aM, pausa, dov, oreFatte, ecc, wknd, fest_, festName: _festName(ds) });
+    cur.setDate(cur.getDate() + 1);
+  }
+  return rows;
+}
+
+function exportCSV() {
+  const s = getSettings();
+  const rows = buildAllDaysForExport();
+  let csv = 'Data,Giorno,Tipo,Ingresso,Uscita,Pausa(min),Assenza,OreAssenza,OreFatte,OreDovute,Eccedenza(h),Note\n';
+  rows.forEach(r => {
+    const d = r.d;
+    const assenzaLabel = (d.tipo && d.tipo !== 'normale' && !r.wknd && !r.fest_) ? (r.aT ? 'tutta giornata' : 'parziale') : '';
+    const oreAssenza   = (d.tipo && d.tipo !== 'normale' && !r.aT && !r.wknd && !r.fest_) ? (r.aM/60).toFixed(2) : '';
+    csv += `${r.ds},${dayName(r.ds)},${r.tipoLabel||r.tipo},${d.ingresso||''},${d.uscita||''},${r.pausa},` +
+      `${assenzaLabel},${oreAssenza},` +
+      `${r.oreFatte !== null ? r.oreFatte : ''},${(r.dov/60).toFixed(2)},` +
+      `${r.ecc !== null ? r.ecc : ''},"${(d.note||'').replace(/"/g,'""')}"\n`;
   });
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})), download:`registro-ore_${todayStr()}.csv` });
   a.click(); showToast('CSV esportato!');
@@ -962,37 +1049,51 @@ function exportXLSX() {
 }
 
 function doXLSX() {
-  const giorni = getGiorni(), s = getSettings();
+  const allRows = buildAllDaysForExport();
+  if (!allRows.length) { showToast('Nessun dato da esportare', 'error'); return; }
+
   const wb = XLSX.utils.book_new();
-  const byM = {};
-  Object.keys(giorni).sort().forEach(k => { const mo=k.slice(0,7); if(!byM[mo]) byM[mo]=[]; byM[mo].push(k); });
   const MN = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  const HEADER = ['Data','Giorno','Tipo','Ingresso','Uscita','Pausa(min)','Assenza','Ore Assenza','Ore Fatte','Ore Dovute','Eccedenza(h)','Note'];
+
+  // Group by month
+  const byM = {};
+  allRows.forEach(r => { const mo = r.ds.slice(0,7); if(!byM[mo]) byM[mo]=[]; byM[mo].push(r); });
 
   Object.keys(byM).sort().forEach(mo => {
     const [, m] = mo.split('-');
-    const rows = [['Data','Giorno','Ingresso','Uscita','Pausa(min)','Tipo','Assenza','OreAssenza','OreFatte','OreDovute','Eccedenza(h)','Note']];
-    byM[mo].sort().forEach(k => {
-      const d    = giorni[k];
-      const tipo = d.tipo || 'normale';
-      const aT   = d.assenzaTutta !== false;
-      const aM   = d.assenzaMinuti || s.oreDovute * 30;
-      const pausa = d.pausa ?? s.pausaDefault;
-      let dov = isWeekend(k)||isFestivo(k) ? 0 : s.oreDovute * 60;
-      if (tipo !== 'normale') dov = aT ? 0 : Math.max(0, dov - aM);
-      let fatte=null, ecc=null;
-      if (d.ingresso && d.uscita) {
-        const f = timeToMinutes(d.uscita) - timeToMinutes(d.ingresso) - pausa;
-        fatte = +(f/60).toFixed(2); ecc = +((f-dov)/60).toFixed(2);
-      }
-      rows.push([k, dayName(k), d.ingresso||'', d.uscita||'', pausa, tipo,
-        tipo!=='normale'?(aT?'tutta giornata':'parziale'):'',
-        tipo!=='normale'&&!aT?+(aM/60).toFixed(2):null,
-        fatte, +(dov/60).toFixed(2), ecc, d.note||'']);
+    const rows = [HEADER];
+    let totFatte = 0, totEcc = 0, totDov = 0;
+
+    byM[mo].forEach(r => {
+      const d = r.d;
+      const assenzaLabel = (d.tipo && d.tipo !== 'normale' && !r.wknd && !r.fest_) ? (r.aT ? 'tutta giornata' : 'parziale') : '';
+      const oreAssenza   = (d.tipo && d.tipo !== 'normale' && !r.aT && !r.wknd && !r.fest_) ? +(r.aM/60).toFixed(2) : null;
+      if (r.oreFatte !== null) { totFatte += r.oreFatte; }
+      if (r.ecc !== null)      { totEcc += r.ecc; }
+      totDov += +(r.dov/60).toFixed(2);
+
+      rows.push([
+        r.ds, dayName(r.ds), r.tipo,
+        d.ingresso||'', d.uscita||'', r.pausa,
+        assenzaLabel, oreAssenza,
+        r.oreFatte, +(r.dov/60).toFixed(2), r.ecc,
+        d.note||''
+      ]);
     });
+
+    // Totale mese row
+    rows.push([]);
+    rows.push([
+      'TOTALE MESE', '', '', '', '', '', '', '',
+      +totFatte.toFixed(2), +totDov.toFixed(2), +totEcc.toFixed(2), ''
+    ]);
+
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [10,12,10,10,10,10,14,11,10,10,12,20].map(w=>({wch:w}));
-    XLSX.utils.book_append_sheet(wb, ws, MN[parseInt(m)-1]);
+    ws['!cols'] = [12,12,10,10,10,10,14,11,10,10,12,24].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, MN[parseInt(m)-1].slice(0,31));
   });
+
   XLSX.writeFile(wb, `registro-ore_${todayStr()}.xlsx`);
   showToast('XLSX esportato!');
 }
@@ -1062,7 +1163,8 @@ function initSettings() {
   const s = getSettings();
   document.getElementById('oreDovuteInput').value    = s.oreDovute;
   document.getElementById('pausaDefaultInput').value = s.pausaDefault;
-  document.getElementById('ingressoDefaultInput').value = s.ingressoDefault;
+  document.getElementById('ingressoDefaultInput').value = s.ingressoDefault ?? '08:30';
+  document.getElementById('uscitaDefaultInput').value   = s.uscitaDefault   ?? '17:30';
   document.getElementById('annoInput').value         = s.anno;
   document.getElementById('yearLabel').textContent   = s.anno;
   const fl = document.getElementById('festivitaAnnoLabel');
@@ -1077,6 +1179,7 @@ function saveSettings() {
     oreDovute:       parseFloat(document.getElementById('oreDovuteInput').value) || 8,
     pausaDefault:    parseInt(document.getElementById('pausaDefaultInput').value)  || 60,
     ingressoDefault: document.getElementById('ingressoDefaultInput').value || '08:30',
+    uscitaDefault:   document.getElementById('uscitaDefaultInput').value   || '17:30',
     anno:            parseInt(document.getElementById('annoInput').value) || 2026,
   };
   setSettings(s);
@@ -1141,6 +1244,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const s      = getSettings();
     const grid   = document.getElementById('calGrid');
     const today  = todayStr();
+    // FIX 8+13: cache festivita once for the whole calendar render
+    const _calFest = getFestivita();
 
     // First day of month (0=Sun..6=Sat → convert to Mon=0)
     const firstDay = new Date(calYear, calMonth, 1).getDay();
@@ -1168,13 +1273,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (dayData && (dayData.ingresso || dayData.tipo !== 'normale')) {
         cls += ' has-data';
-        // Check if negative
         if (dayData.ingresso && dayData.uscita) {
           const tipo = dayData.tipo || 'normale';
           const aT   = dayData.assenzaTutta !== false;
           const aM   = dayData.assenzaMinuti || s.oreDovute * 30;
-          let dov    = isWknd || isFestivo(ds) ? 0 : s.oreDovute * 60;
-          if (tipo !== 'normale') dov = aT ? 0 : Math.max(0, dov - aM);
+          const dov  = calcOreDovuteForDay(ds, tipo, aT, aM, _calFest);
           const ecc  = (timeToMinutes(dayData.uscita) - timeToMinutes(dayData.ingresso) - (dayData.pausa ?? s.pausaDefault)) - dov;
           if (ecc < 0) cls += ' neg-data';
         }
@@ -1298,7 +1401,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Settings ──
-  ['oreDovuteInput','pausaDefaultInput','ingressoDefaultInput','annoInput'].forEach(id => {
+  ['oreDovuteInput','pausaDefaultInput','ingressoDefaultInput','uscitaDefaultInput','annoInput'].forEach(id => {
     document.getElementById(id).addEventListener('change', saveSettings);
   });
 
@@ -1417,7 +1520,7 @@ if ('serviceWorker' in navigator) {
 
 // ===== MANIFEST =====
 const mL = document.createElement('link'); mL.rel = 'manifest';
-mL.href = URL.createObjectURL(new Blob([JSON.stringify({ name:'Registro Ore', short_name:'Reg. Ore', start_url:'.', display:'standalone', background_color:'#0d0d18', theme_color:'#1a1a2e', icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231a1a2e'/%3E%3Ccircle cx='96' cy='96' r='52' stroke='%236c63ff' stroke-width='8' fill='none'/%3E%3Cline x1='96' y1='96' x2='96' y2='54' stroke='%236c63ff' stroke-width='6' stroke-linecap='round'/%3E%3Cline x1='96' y1='96' x2='124' y2='110' stroke='%23ff6584' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E",sizes:'192x192',type:'image/svg+xml'}] })], {type:'application/json'}));
+mL.href = URL.createObjectURL(new Blob([JSON.stringify({ name:'Registro Ore', short_name:'Registro Ore', start_url:'.', display:'standalone', background_color:'#0d0d18', theme_color:'#1a1a2e', icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231a1a2e'/%3E%3Ccircle cx='96' cy='96' r='52' stroke='%236c63ff' stroke-width='8' fill='none'/%3E%3Cline x1='96' y1='96' x2='96' y2='54' stroke='%236c63ff' stroke-width='6' stroke-linecap='round'/%3E%3Cline x1='96' y1='96' x2='124' y2='110' stroke='%23ff6584' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E",sizes:'192x192',type:'image/svg+xml'}] })], {type:'application/json'}));
 document.head.appendChild(mL);
 </script>
 </body>
