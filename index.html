@@ -494,7 +494,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         <button class="add-btn" id="resetBtn" type="button" style="border-color:var(--red);color:var(--red);">Reset</button>
       </div>
     </div>
-    <div class="ore-dovute-note">Versione 1.2 — Registro Ore PWA<br>Dati salvati localmente nel browser</div>
+    <div class="ore-dovute-note">Versione 1.3 — Registro Ore PWA<br>Dati salvati localmente nel browser</div>
   </div>
 </div>
 
@@ -1140,7 +1140,7 @@ function checkBackupReminder() {
 
 function doBackup() {
   const backup = {
-    version: '1.2',
+    version: '1.3',
     exportedAt: new Date().toISOString(),
     settings: getSettings(),
     giorni: getGiorni(),
